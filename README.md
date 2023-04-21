@@ -1,23 +1,9 @@
-# 代码使用说明
-项目代码包含2个分支：
-- master : 主分支，包含完整版代码，作为大家的编码参考使用
-- init : 初始化分支，实战篇的初始代码，建议大家以这个分支作为自己开发的基础代码
-## 1.下载
-克隆完整项目
-```git
-git clone https://gitee.com/huyi612/hm-dianping.git
-```
-切换分支
-```git
-git checkout init
-```
-
-## 2.常见问题
-部分同学直接使用了master分支项目来启动，控制台会一直报错:
-```
-NOGROUP No such key 'stream.orders' or consumer group 'g1' in XREADGROUP with GROUP option
-```
-这是因为我们完整版代码会尝试访问Redis，连接Redis的Stream。建议同学切换到init分支来开发，如果一定要运行master分支，请先在Redis运行一下命令：
-```text
-XGROUP CREATE stream.orders g1 $ MKSTREAM
-```
+### 缓存更新策略
+1. 内存淘汰，由redis的过期策略来更新缓存，缓存过期后，下次访问时，从数据库中获取数据，然后更新缓存
+2. 主动更新，由应用程序来更新缓存，应用程序定时更新缓存，或者应用程序在更新数据库时，更新缓存
+    1. 缓存调用者去更新缓存
+    2. 缓存和数据库整合为一个服务，由服务来进行维护一致性
+![img.png](src/main/resources/img/refreshCache.png)
+   ![img.png](src/main/resources/img/cacheOrder.png)
+    3. 调用者只操作缓存，由其他线程异步去将缓存数据持久化到数据库
+3. 超时剔除

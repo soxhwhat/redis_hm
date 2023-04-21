@@ -70,9 +70,9 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
         if (id == null) {
             return Result.fail("店铺id不能为空");
         }
-        // 1.更新数据库
+        // 1.更新数据库（先写数据库，再删除缓存）
         updateById(shop);
-        // 2.删除缓存
+        // 2.删除缓存(更新时删除缓存，查询时再次写入缓存)
         stringRedisTemplate.delete(CACHE_SHOP_KEY + id);
         return Result.ok();
     }
