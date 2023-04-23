@@ -113,7 +113,7 @@ public class CacheClient {
                 }
             });
         }
-        // 6.4.返回过期的商铺信息
+        // 6.4.返回过期的商铺信息, 此处无论是否获取锁都立刻返回，异步线程去重建缓存
         return r;
     }
 
@@ -167,6 +167,7 @@ public class CacheClient {
     }
 
     private boolean tryLock(String key) {
+        // 1.尝试获取锁
         Boolean flag = stringRedisTemplate.opsForValue().setIfAbsent(key, "1", 10, TimeUnit.SECONDS);
         return BooleanUtil.isTrue(flag);
     }
