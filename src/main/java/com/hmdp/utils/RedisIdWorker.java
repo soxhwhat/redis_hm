@@ -33,10 +33,10 @@ public class RedisIdWorker {
         // 2.生成序列号
         // 2.1.获取当前日期，精确到天
         String date = now.format(DateTimeFormatter.ofPattern("yyyy:MM:dd"));
-        // 2.2.自增长
+        // 2.2.自增长 采用redis的自增长（最大值为2^32-1，添加date字段控制每天均可以生成2^32）
         long count = stringRedisTemplate.opsForValue().increment("icr:" + keyPrefix + ":" + date);
 
-        // 3.拼接并返回
+        // 3.拼接并返回 采用位运算来拼接,将时间戳向左移32位，序列号不变
         return timestamp << COUNT_BITS | count;
     }
 }
