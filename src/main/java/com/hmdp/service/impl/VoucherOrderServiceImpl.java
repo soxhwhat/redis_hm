@@ -211,11 +211,9 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
             return;
         }
 
-        // 6.扣减库存
-        boolean success = seckillVoucherService.update()
-                .setSql("stock = stock - 1") // set stock = stock - 1
-                .eq("voucher_id", voucherOrder.getVoucherId()).gt("stock", 0) // where id = ? and stock > 0
-                .update();
+        // 6.扣减库存 通过mybatis-plus的update方法里的setSql方法可以实现自定义sql
+        boolean success = seckillVoucherService.updateStock(userId);
+
         if (!success) {
             // 扣减失败
             log.error("库存不足！");
