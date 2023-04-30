@@ -81,6 +81,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         }
 
         // 4.一致，根据手机号查询用户 select * from tb_user where phone = ?
+        // 不显式写出userMapper这种写法推荐使用
         User user = query().eq("phone", phone).one();
 
         // 5.判断用户是否存在

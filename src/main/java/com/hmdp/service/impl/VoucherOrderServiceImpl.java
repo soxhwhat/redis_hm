@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -65,13 +66,14 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     private static final ExecutorService SECKILL_ORDER_EXECUTOR = Executors.newSingleThreadExecutor();
 
     @PostConstruct
-    private void init(){
+    private void init() {
         // TODO 需要秒杀下单功能的同学自己解开下面的注释
         SECKILL_ORDER_EXECUTOR.submit(new VoucherOrderHandler());
     }
 
-    private class VoucherOrderHandler implements Runnable{
+    private class VoucherOrderHandler implements Runnable {
         private final String queueName = "stream.orders";
+
         @Override
         public void run() {
             while (true) {
@@ -104,7 +106,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
             }
         }
 
-        public void initStream(){
+        public void initStream() {
             Boolean exists = stringRedisTemplate.hasKey(queueName);
             if (BooleanUtil.isFalse(exists)) {
                 log.info("stream不存在，开始创建stream");
@@ -115,7 +117,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
             }
             // stream存在，判断group是否存在
             StreamInfo.XInfoGroups groups = stringRedisTemplate.opsForStream().groups(queueName);
-            if(groups.isEmpty()){
+            if (groups.isEmpty()) {
                 log.info("group不存在，开始创建group");
                 // group不存在，创建group
                 stringRedisTemplate.opsForStream().createGroup(queueName, ReadOffset.latest(), "g1");
@@ -156,11 +158,33 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         Long userId = voucherOrder.getId();
         // 创建锁对象
         // SimpleRedisLock lock = new SimpleRedisLock("order:" + userId, stringRedisTemplate);
+        /**
+         * 为什么不直接使用userId作为锁的key？
+         * 1. 在 Java 中，基本数据类型并不能用作锁的对象。因为 Java 中每个对象都有一个关联的监视器(monitor)，可以使用 synchronized 关键字来获取这个对象的监视器，从而实现对该对象的同步访问。
+         * 2. 因为每次请求过来，都会生成一个新的userId对象，这样就会导致每次请求都会生成一个新的锁，这样就没有锁的意义了。
+         * 根据您提供的信息，每次请求使用相同的id生成不同的对象，这很可能是因为在每次请求时都重新创建了对象。如果您希望在多次请求之间重用同一对象，则需要确保对象只被创建一次并在以后的请求中重复使用。
+         *
+         *
+         * userId.toString() 即使是同一个用户，也会生成不同的锁。因为每次调用toString()方法，都会生成一个新的String对象
+         * intern()方法可以将String对象放入常量池中，如果常量池中已经存在，则直接返回常量池中的对象。
+         */
+//        synchronized (userId.toString().intern())
+        /**
+         * SynchronizedLock VS RedisLock
+         * 原本方案直接在方法上加锁，但是这样会导致锁的粒度太大，性能不好
+         * 但是我们真正需要限制的是同一个用户不能重复下单，所以我们可以将锁的粒度缩小到用户级别
+         * 也就是说，每个用户都有一个锁，这样就不会出现一个用户下单，其他用户也不能下单的情况
+         */
         RLock lock = redissonClient.getLock("lock:order:" + userId);
         // 获取锁
+        /**
+         * 如果分布式情况下，多个用户同时下单，会出现什么情况？
+         * Synchronized无法解决分布式情况下的并发问题，所以我们需要使用分布式锁
+         *
+         */
         boolean isLock = lock.tryLock();
         // 判断是否获取锁成功
-        if(!isLock){
+        if (!isLock) {
             // 获取锁失败，返回错误或重试
             log.error("不允许重复下单");
             return;
@@ -175,6 +199,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     }
 
     IVoucherOrderService proxy;
+
     @Override
     public Result seckillVoucher(Long voucherId) {
         Long userId = UserHolder.getUser().getId();
@@ -203,7 +228,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         Long userId = voucherOrder.getUserId();
 
         // 5.1.查询订单
-        int count = query().eq("user_id", userId).eq("voucher_id", voucherOrder.getVoucherId()).count();
+        int count = lambdaQuery().eq(VoucherOrder::getUserId, userId).eq(VoucherOrder::getVoucherId, voucherOrder.getVoucherId()).count();
         // 5.2.判断是否存在
         if (count > 0) {
             // 用户已经购买过了

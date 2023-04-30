@@ -31,8 +31,17 @@ public class SeckillVoucherServiceImpl extends ServiceImpl<SeckillVoucherMapper,
      */
     @Override
     public boolean updateStock(Long id) {
-        return new LambdaUpdateChainWrapper<SeckillVoucher>(seckillVoucherMapper)
+//        return new LambdaUpdateChainWrapper<SeckillVoucher>(seckillVoucherMapper)
+//                .eq(SeckillVoucher::getVoucherId, id)
+//                .gt(SeckillVoucher::getStock, 0)
+//                .setSql("stock = stock - 1")
+//                .update();
+        return lambdaUpdate()
                 .eq(SeckillVoucher::getVoucherId, id)
+                /*
+                  乐观锁乐观锁可以避免悲观锁的性能问题，但是会有更新成功率太低的问题
+                  此处可以通过更改判断库存是否大于0来解决，因为我们并不是真正的更新库存，而是减库存，仅仅是为了判断库存是否大于0
+                 */
                 .gt(SeckillVoucher::getStock, 0)
                 .setSql("stock = stock - 1")
                 .update();

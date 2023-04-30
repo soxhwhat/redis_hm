@@ -44,6 +44,7 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
     @Transactional
     public void addSeckillVoucher(Voucher voucher) {
         // 保存优惠券
+        // 不需要指定mapper，因为ServiceImpl已经指定了
         save(voucher);
         // 保存秒杀信息
         SeckillVoucher seckillVoucher = new SeckillVoucher();
