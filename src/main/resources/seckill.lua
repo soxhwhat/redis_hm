@@ -14,11 +14,13 @@ local orderKey = 'seckill:order:' .. voucherId
 
 -- 3.脚本业务
 -- 3.1.判断库存是否充足 get stockKey
+-- tonumber方法，将字符串转换为数字
 if(tonumber(redis.call('get', stockKey)) <= 0) then
     -- 3.2.库存不足，返回1
     return 1
 end
 -- 3.2.判断用户是否下单 SISMEMBER orderKey userId
+-- set集合sisMember方法，判断是否存在，存在返回1，不存在返回0
 if(redis.call('sismember', orderKey, userId) == 1) then
     -- 3.3.存在，说明是重复下单，返回2
     return 2
@@ -28,5 +30,6 @@ redis.call('incrby', stockKey, -1)
 -- 3.5.下单（保存用户）sadd orderKey userId
 redis.call('sadd', orderKey, userId)
 -- 3.6.发送消息到队列中， XADD stream.orders * k1 v1 k2 v2 ...
+-- 此处id并不确定，所以使用*，redis会自动生成一个id
 redis.call('xadd', 'stream.orders', '*', 'userId', userId, 'voucherId', voucherId, 'id', orderId)
 return 0

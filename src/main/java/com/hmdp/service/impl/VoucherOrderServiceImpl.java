@@ -66,6 +66,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     private static final ExecutorService SECKILL_ORDER_EXECUTOR = Executors.newSingleThreadExecutor();
 
     @PostConstruct
+    //当前类初始化立刻开始提交该线程任务
     private void init() {
         // TODO 需要秒杀下单功能的同学自己解开下面的注释
         SECKILL_ORDER_EXECUTOR.submit(new VoucherOrderHandler());
@@ -97,7 +98,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
                     VoucherOrder voucherOrder = BeanUtil.fillBeanWithMap(value, new VoucherOrder(), true);
                     // 3.创建订单
                     handleVoucherOrder(voucherOrder);
-                    // 4.确认消息 XACK stream.orders g1 id
+                    // 4.确认消息 XACK stream.orders g1 id， 此处ack消息的id
                     stringRedisTemplate.opsForStream().acknowledge(queueName, "g1", record.getId());
                 } catch (Exception e) {
                     log.error("处理订单异常", e);
@@ -128,7 +129,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         private void handlePendingList() {
             while (true) {
                 try {
-                    // 1.获取消息队列中的订单信息 XREADGROUP GROUP g1 c1 COUNT 1 STREAMS s1 0
+                    // 1.获取消息队列中的订单信息 XREADGROUP GROUP g1 c1 COUNT 1 STREAMS s1 0， 注意0是读取pendingList里面的消息
                     List<MapRecord<String, Object, Object>> list = stringRedisTemplate.opsForStream().read(
                             Consumer.from("g1", "c1"),
                             StreamReadOptions.empty().count(1),
@@ -174,6 +175,9 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
          * 原本方案直接在方法上加锁，但是这样会导致锁的粒度太大，性能不好
          * 但是我们真正需要限制的是同一个用户不能重复下单，所以我们可以将锁的粒度缩小到用户级别
          * 也就是说，每个用户都有一个锁，这样就不会出现一个用户下单，其他用户也不能下单的情况
+         *
+         *
+         * redisson实现的锁实现了可重入
          */
         RLock lock = redissonClient.getLock("lock:order:" + userId);
         // 获取锁
@@ -186,6 +190,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         // 判断是否获取锁成功
         if (!isLock) {
             // 获取锁失败，返回错误或重试
+            // 此处直接返回失败，因为秒杀业务不允许重试
             log.error("不允许重复下单");
             return;
         }
@@ -228,8 +233,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         Long userId = voucherOrder.getUserId();
 
         // 5.1.查询订单
-        int count = lambdaQuery().eq(VoucherOrder::getUserId, userId).eq(VoucherOrder::getVoucherId, voucherOrder.getVoucherId()).count();
-        // 5.2.判断是否存在
+        int count = query().eq("user_id", userId).eq("voucher_id", voucherOrder.getVoucherId()).count();        // 5.2.判断是否存在
         if (count > 0) {
             // 用户已经购买过了
             log.error("用户已经购买过一次！");
@@ -237,7 +241,10 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         }
 
         // 6.扣减库存 通过mybatis-plus的update方法里的setSql方法可以实现自定义sql
-        boolean success = seckillVoucherService.updateStock(userId);
+        boolean success = seckillVoucherService.update()
+                .setSql("stock = stock - 1") // set stock = stock - 1
+                .eq("voucher_id", voucherOrder.getVoucherId()).gt("stock", 0) // where id = ? and stock > 0
+                .update();
 
         if (!success) {
             // 扣减失败
@@ -250,7 +257,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     }
 
    /*
-
+    阻塞队列方案存在的问题
     private BlockingQueue<VoucherOrder> orderTasks = new ArrayBlockingQueue<>(1024 * 1024);
     private class VoucherOrderHandler implements Runnable{
         @Override
