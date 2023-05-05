@@ -38,10 +38,14 @@ public class Blog implements Serializable {
     private Long shopId;
     /**
      * 用户id
+     *
      */
     private Long userId;
     /**
      * 用户图标
+     *
+     * @TableField(exist = false) 表示该字段不是数据库表中的字段
+     * 因为我们在查询的时候，需要查询用户的头像，但是用户的头像并不在博客表中，所以我们需要在这里添加一个字段
      */
     @TableField(exist = false)
     private String icon;

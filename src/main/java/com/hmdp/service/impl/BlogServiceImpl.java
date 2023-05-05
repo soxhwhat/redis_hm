@@ -97,7 +97,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
     @Override
     public Result likeBlog(Long id) {
         // 1.获取登录用户
-        Long userId = UserHolder.getUser().getId();
+        Long userId = 1010L;
         // 2.判断当前登录用户是否已经点赞
         String key = BLOG_LIKED_KEY + id;
         Double score = stringRedisTemplate.opsForZSet().score(key, userId.toString());
@@ -105,7 +105,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
             // 3.如果未点赞，可以点赞
             // 3.1.数据库点赞数 + 1
             boolean isSuccess = update().setSql("liked = liked + 1").eq("id", id).update();
-            // 3.2.保存用户到Redis的set集合  zadd key value score
+            // 3.2.保存用户到Redis的set集合  zadd key value score score:代表这个value的权重
             if (isSuccess) {
                 stringRedisTemplate.opsForZSet().add(key, userId.toString(), System.currentTimeMillis());
             }

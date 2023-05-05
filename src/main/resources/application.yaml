@@ -10,11 +10,17 @@ spring:
     password:
   # 对应 RedisProperties 类
   redis:
-    host: 127.0.0.1
+    host: localhost
     port: 6379
     password: # Redis 服务器密码，默认为空。生产中，一定要设置 Redis 密码！
-    database: 0 # Redis 数据库号，默认为 0 。
-    timeout: 0 # Redis 连接超时时间，单位：毫秒。
+    lettuce:
+      pool:
+        max-active: 10
+        max-idle: 10
+        min-idle: 1
+        time-between-eviction-runs: 10s
+#    database: 0 # Redis 数据库号，默认为 0 。
+#    timeout: 0 # Redis 连接超时时间，单位：毫秒。
 #    redisson:
 #      config: classpath:redisson.yaml # Redisson 配置文件路径
   jackson:

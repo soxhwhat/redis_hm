@@ -1,5 +1,6 @@
 package com.hmdp;
 
+import com.hmdp.service.IBlogService;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,6 +21,9 @@ class RedissonTest {
 
     @Resource
     private RedissonClient redissonClient;
+
+    @Resource
+    private IBlogService blogService;
 
     private RLock lock;
 
@@ -59,6 +63,11 @@ class RedissonTest {
             log.warn("准备释放锁 .... 2");
             lock.unlock();
         }
+    }
+
+    @Test
+    public void testLike() {
+        blogService.likeBlog(7L);
     }
 
 }

@@ -4,6 +4,7 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.BooleanUtil;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hmdp.dto.Result;
+import com.hmdp.entity.SeckillVoucher;
 import com.hmdp.entity.VoucherOrder;
 import com.hmdp.mapper.VoucherOrderMapper;
 import com.hmdp.service.ISeckillVoucherService;
@@ -69,7 +70,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     //当前类初始化立刻开始提交该线程任务
     private void init() {
         // TODO 需要秒杀下单功能的同学自己解开下面的注释
-        SECKILL_ORDER_EXECUTOR.submit(new VoucherOrderHandler());
+//        SECKILL_ORDER_EXECUTOR.submit(new VoucherOrderHandler());
     }
 
     private class VoucherOrderHandler implements Runnable {
@@ -233,7 +234,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         Long userId = voucherOrder.getUserId();
 
         // 5.1.查询订单
-        int count = query().eq("user_id", userId).eq("voucher_id", voucherOrder.getVoucherId()).count();        // 5.2.判断是否存在
+        int count = lambdaQuery().eq(VoucherOrder::getUserId, userId).eq(VoucherOrder::getVoucherId, voucherOrder.getVoucherId()).count();        // 5.2.判断是否存在
         if (count > 0) {
             // 用户已经购买过了
             log.error("用户已经购买过一次！");
@@ -241,9 +242,9 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         }
 
         // 6.扣减库存 通过mybatis-plus的update方法里的setSql方法可以实现自定义sql
-        boolean success = seckillVoucherService.update()
+        boolean success = seckillVoucherService.lambdaUpdate()
                 .setSql("stock = stock - 1") // set stock = stock - 1
-                .eq("voucher_id", voucherOrder.getVoucherId()).gt("stock", 0) // where id = ? and stock > 0
+                .eq(SeckillVoucher::getVoucherId, voucherOrder.getVoucherId()).gt(SeckillVoucher::getStock, 0) // where id = ? and stock > 0
                 .update();
 
         if (!success) {
