@@ -207,3 +207,32 @@ XACK key groupname ID [ID ...]
 简单示例：XACK mystream group1 1600000000001-0 //将1600000000001-0消息确认为已消费
 ```
 ![redis消息队列.png](src%2Fmain%2Fresources%2Fimg%2Fredis%CF%FB%CF%A2%B6%D3%C1%D0.png)
+
+### 关注推送
+关于推送也叫Feed流，是一种消息推送的方式，可以实现类似微博、抖音、微信朋友圈的功能。为用户持续的提供沉浸式的体验，通过无限下拉刷新获取新的消息。     
+#### Feed流的模式
+- Timeline: 不做内容筛选，简单按照内容发布时间排序，常用于好友或关注，例如微博、微信朋友圈 
+  实现方案 ![img.png](src/main/resources/img/feed流模式.png)
+  - 拉模式：也叫做读扩散。 ![拉模式.png](src%2Fmain%2Fresources%2Fimg%2F%C0%AD%C4%A3%CA%BD.png)
+    - 优点：实现简单，不需要额外的存储空间
+    - 缺点：当用户关注的人很多时，需要拉取的消息很多，会影响性能。延迟高
+  - 推模式：也叫做写扩散。 ![推模式.png](src%2Fmain%2Fresources%2Fimg%2F%C0%AD%C4%A3%CA%BD.png)
+    - 优点：性能高，延迟低
+    - 缺点：实现复杂，由于需要写n份推送，需要额外的存储空间
+  - 推拉结合模式，也叫做读写模式。对于活跃粉丝直接采用推模式，但对于普通粉丝来说，从博主的发件箱中拉取信息，采用拉模式。 ![推拉结合模式.png](src%2Fmain%2Fresources%2Fimg%2F%C0%AD%C4%A3%CA%BD.png)
+
+- Recommendation: 根据用户的兴趣爱好，推荐相关的内容，例如抖音、今日头条
+#### Feed流的分页问题
+Feed流中的数据会不断更新，所以数据的角标也在变化，因此不能采用传统的分页模式。![feed流分页模式问题.png](src%2Fmain%2Fresources%2Fimg%2Ffeed%C1%F7%B7%D6%D2%B3%C4%A3%CA%BD%CE%CA%CC%E2.png)
+比如数据库中存在6，5，4，3，2，1数据，第一次分页取出6，5，4，此时插入一条新数据7，第二次分页由于数据角标发生改变，就会取出4，3，2数据。
+因此采用滚动分页模式。
+- 滚动分页模式：每次获取指定数量的数据，下次获取时，从上次获取的最后一条数据开始获取。
+这种模式获得的数据 ZREVRANGEBYSCORE z1 1000(MAX) 0(MIN) WITHSCORES LIMIT 0 3 -> 6,5,4
+下次获取的数据 ZREVRANGEBYSCORE z1 4(MAX) 0(MIN) WITHSCORES LIMIT 1 3 -> 3,2,1 (4就是上一次查询的最小值)
+![滚动分页模式.png](src%2Fmain%2Fresources%2Fimg%2F%C1%F7%B7%D6%D2%B3%C4%A3%CA%BD%CE%CA%CC%E2.png)
+
+滚动分页查询参数：
+1.MAX 当前时间戳 || 上一次查询最小值
+2.MIN 固定为0
+3.OFFSET 0 || 上一次查询的结果中，与最小值相同的数据的数量
+4.LIMIT 每次查询的数量 固定值

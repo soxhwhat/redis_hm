@@ -52,7 +52,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
 
     @Override
     public Result queryHotBlog(Integer current) {
-        // 根据用户查询
+        // 根据用户查询 此处直接借助Page<T>
         Page<Blog> page = query()
                 .orderByDesc("liked")
                 .page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
@@ -155,7 +155,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
         }
         // 3.查询笔记作者的所有粉丝 select * from tb_follow where follow_user_id = ?
         List<Follow> follows = followService.query().eq("follow_user_id", user.getId()).list();
-        // 4.推送笔记id给所有粉丝
+        // 4.推送笔记id给所有粉丝 此处采用推模式
         for (Follow follow : follows) {
             // 4.1.获取粉丝id
             Long userId = follow.getUserId();
@@ -166,6 +166,15 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
         // 5.返回id
         return Result.ok(blog.getId());
     }
+
+    /**
+     * Zset实现滚动分页逻辑
+     *
+     *
+     * @param max
+     * @param offset
+     * @return
+     */
 
     @Override
     public Result queryBlogOfFollow(Long max, Integer offset) {
@@ -189,7 +198,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
             // 4.2.获取分数(时间戳）
             long time = tuple.getScore().longValue();
             if(time == minTime){
-                os++;
+                os++; //此处是统计相同最小时间戳的个数
             }else{
                 minTime = time;
                 os = 1;
@@ -207,7 +216,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
             isBlogLiked(blog);
         }
 
-        // 6.封装并返回
+        // 6.封装并返回 此处封装的是分页数据，包含了数据列表、最小时间戳、偏移量，方便下次进行查询。
         ScrollResult r = new ScrollResult();
         r.setList(blogs);
         r.setOffset(os);
