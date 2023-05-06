@@ -124,7 +124,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
     @Override
     public Result queryBlogLikes(Long id) {
         String key = BLOG_LIKED_KEY + id;
-        // 1.查询top5的点赞用户 zrange key 0 4
+        // 1.查询top5的点赞用户 zrange key 0 4 此处是借助zSet对象按照点赞时间顺序
         Set<String> top5 = stringRedisTemplate.opsForZSet().range(key, 0, 4);
         if (top5 == null || top5.isEmpty()) {
             return Result.ok(Collections.emptyList());
@@ -134,6 +134,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
         String idStr = StrUtil.join(",", ids);
         // 3.根据用户id查询用户 WHERE id IN ( 5 , 1 ) ORDER BY FIELD(id, 5, 1)
         List<UserDTO> userDTOS = userService.query()
+                //此处由于sql的in会打乱原有的顺序，所以需要使用order by field来保证顺序
                 .in("id", ids).last("ORDER BY FIELD(id," + idStr + ")").list()
                 .stream()
                 .map(user -> BeanUtil.copyProperties(user, UserDTO.class))
