@@ -49,10 +49,12 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> impleme
             boolean isSuccess = save(follow);
             if (isSuccess) {
                 // 把关注用户的id，放入redis的set集合 sadd userId followerUserId
+                // 此处是因为要获得共同关注的id，所以需要将关注的id放入redis中
                 stringRedisTemplate.opsForSet().add(key, followUserId.toString());
             }
         } else {
             // 3.取关，删除 delete from tb_follow where user_id = ? and follow_user_id = ?
+            //mbp支持remove方法，传入条件构造器对数据进行删除
             boolean isSuccess = remove(new QueryWrapper<Follow>()
                     .eq("user_id", userId).eq("follow_user_id", followUserId));
             if (isSuccess) {
@@ -79,6 +81,7 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> impleme
         Long userId = UserHolder.getUser().getId();
         String key = "follows:" + userId;
         // 2.求交集
+        // 利用redis set集合求交集 interset key1 key2
         String key2 = "follows:" + id;
         Set<String> intersect = stringRedisTemplate.opsForSet().intersect(key, key2);
         if (intersect == null || intersect.isEmpty()) {
