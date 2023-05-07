@@ -236,3 +236,7 @@ Feed流中的数据会不断更新，所以数据的角标也在变化，因此�
 2.MIN 固定为0
 3.OFFSET 0 || 上一次查询的结果中，与最小值相同的数据的数量
 4.LIMIT 每次查询的数量 固定值
+
+### 附近商户搜索
+按照商户类型做分组，类型相同的商户作为同一组，以typedId为key存入同一个GEO集合中即可。
+例如:shop:geo:food、shop:geo:hotel、shop:geo:movie

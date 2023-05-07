@@ -120,7 +120,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         String key = USER_SIGN_KEY + userId + keySuffix;
         // 4.获取今天是本月的第几天
         int dayOfMonth = now.getDayOfMonth();
-        // 5.写入Redis SETBIT key offset 1
+        // 5.写入Redis SETBIT key offset 1 0表示未签到，1表示已签到
         stringRedisTemplate.opsForValue().setBit(key, dayOfMonth - 1, true);
         return Result.ok();
     }
@@ -133,10 +133,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         LocalDateTime now = LocalDateTime.now();
         // 3.拼接key
         String keySuffix = now.format(DateTimeFormatter.ofPattern(":yyyyMM"));
+        //key设置为用户id+年月份
         String key = USER_SIGN_KEY + userId + keySuffix;
         // 4.获取今天是本月的第几天
         int dayOfMonth = now.getDayOfMonth();
-        // 5.获取本月截止今天为止的所有的签到记录，返回的是一个十进制的数字 BITFIELD sign:5:202203 GET u14 0
+        // 5.获取本月截止今天为止的所有的签到记录，返回的是一个十进制的数字 BITFIELD sign:5:202203 GET u14 0 14代表是dayOfMonth
+        // bitFiled函数列表为key，BitFieldSubCommands对象，返回值为List<Long>
         List<Long> result = stringRedisTemplate.opsForValue().bitField(
                 key,
                 BitFieldSubCommands.create()

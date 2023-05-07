@@ -78,7 +78,7 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
     }
 
     @Override
-    public Result queryShopByType(Integer typeId, Integer current, Double x, Double y) {
+    public Result  queryShopByType(Integer typeId, Integer current, Double x, Double y) {
         // 1.判断是否需要根据坐标查询
         if (x == null || y == null) {
             // 不需要坐标查询，按数据库查询
@@ -89,7 +89,7 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
             return Result.ok(page.getRecords());
         }
 
-        // 2.计算分页参数
+        // 2.计算分页参数 from、end
         int from = (current - 1) * SystemConstants.DEFAULT_PAGE_SIZE;
         int end = current * SystemConstants.DEFAULT_PAGE_SIZE;
 
@@ -100,6 +100,7 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
                         key,
                         GeoReference.fromCoordinate(x, y),
                         new Distance(5000),
+                        //此处end为分页参数，获得结果为0-end的数据，需要后续手动截取
                         RedisGeoCommands.GeoSearchCommandArgs.newGeoSearchArgs().includeDistance().limit(end)
                 );
         // 4.解析出id

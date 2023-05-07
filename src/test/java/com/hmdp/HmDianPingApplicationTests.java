@@ -66,6 +66,9 @@ class HmDianPingApplicationTests {
         cacheClient.setWithLogicalExpire(CACHE_SHOP_KEY + 1L, shop, 10L, TimeUnit.SECONDS);
     }
 
+    /**
+     * 将店铺信息写入Redis GEO对象
+     */
     @Test
     void loadShopData() {
         // 1.查询店铺信息
