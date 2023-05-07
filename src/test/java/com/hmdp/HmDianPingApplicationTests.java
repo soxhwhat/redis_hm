@@ -103,7 +103,7 @@ class HmDianPingApplicationTests {
             j = i % 1000;
             values[j] = "user_" + i;
             if(j == 999){
-                // 发送到Redis
+                // 发送到Redis 可以直接存入String集合
                 stringRedisTemplate.opsForHyperLogLog().add("hl2", values);
             }
         }
