@@ -240,3 +240,38 @@ Feed流中的数据会不断更新，所以数据的角标也在变化，因此�
 ### 附近商户搜索
 按照商户类型做分组，类型相同的商户作为同一组，以typedId为key存入同一个GEO集合中即可。
 例如:shop:geo:food、shop:geo:hotel、shop:geo:movie
+
+### 分布式缓存
+#### RDB持久化
+RDB持久化是将内存中的数据以快照的形式写入到磁盘中，是一种全量备份的方式。在redis.conf中配置
+```
+# 持久化策略
+save 900 1 # 900秒内至少有1个key发生变化，就会触发持久化操作
+save 300 10 # 300秒内至少有10个key发生变化，就会触发持久化操作
+save 60 10000 # 60秒内至少有10000个key发生变化，就会触发持久化操作
+# 持久化文件名
+dbfilename dump.rdb
+# 持久化文件存放路径
+dir ./
+```
+bgsave开始时会fork主进程得到子进程，子进程共享主进程的内存数据，完成fork后读取内存数据并写入RDB文件。
+![img.png](src/main/resources/img/RDB bgsave.png)
+fork采用的是copy-on-write机制，即子进程在修改数据时，会先复制一份数据，然后再修改，这样就不会影响到主进程的数据。执行读操作时，会访问共享内存。
+#### AOF持久化
+AOF持久化是将内存中的数据以日志的形式写入到磁盘中，是一种增量备份的方式。在redis.conf中配置
+```
+# AOF持久化开关
+appendonly yes
+# AOF持久化文件名
+appendfilename "appendonly.aof"
+# AOF持久化文件存放路径
+dir ./
+# AOF持久化策略
+appendfsync always # 每次写入都会触发fsync，效率最低，但是保证数据不丢失
+appendfsync everysec # 每秒触发一次fsync，效率较高，但是可能会丢失1秒的数据
+appendfsync no # 由操作系统决定何时触发fsync，效率最高，但是可能会丢失1秒以上的数据
+```
+因为是记录命令，AOF文件会比RDB文件大得多，而且AOF会记录对同一个key的多次写操作，但只有最后一次写操作是有效的，因此AOF文件会越来越大。通过执行bgrewriteaof命令，可以将AOF文件重写，重写后的AOF文件只会保留对同一个key的最后一次写操作，用最少的命令达到相同效果。
+
+#### RDB和AOF的选择
+![持久化策略分析.png](src%2Fmain%2Fresources%2Fimg%2F%B3%D6%BE%C3%BB%AF%B2%DF%C2%D4%B7%D6%CE%F6.png)
