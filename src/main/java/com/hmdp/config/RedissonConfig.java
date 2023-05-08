@@ -1,8 +1,10 @@
 package com.hmdp.config;
 
+import io.lettuce.core.ReadFrom;
 import org.redisson.Redisson;
 import org.redisson.api.RedissonClient;
 import org.redisson.config.Config;
+import org.springframework.boot.autoconfigure.data.redis.LettuceClientConfigurationBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -21,6 +23,12 @@ public class  RedissonConfig {
         config.useSingleServer().setAddress("redis://localhost:6379");
         // 创建RedissonClient对象
         return Redisson.create(config);
+    }
+
+    @Bean
+    public LettuceClientConfigurationBuilderCustomizer configurationBuilderCustomizer() {
+        //配置主从读写分离模式，采用REPICA_PREFERRED策略:优先从从节点读取数据，如果从节点不可用，从主节点读取数据
+        return clientConfigurationBuilder -> clientConfigurationBuilder.readFrom(ReadFrom.REPLICA_PREFERRED);
     }
 //
 //    @Bean

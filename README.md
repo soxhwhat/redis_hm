@@ -275,3 +275,45 @@ appendfsync no # 由操作系统决定何时触发fsync，效率最高，但是�
 
 #### RDB和AOF的选择
 ![持久化策略分析.png](src%2Fmain%2Fresources%2Fimg%2F%B3%D6%BE%C3%BB%AF%B2%DF%C2%D4%B7%D6%CE%F6.png)
+
+### Redis主从架构
+单节点redis的并发能力有限，为了提高并发能力，可以采用主从架构。主从架构中，主节点负责写操作，从节点负责读操作，主节点将写操作同步到从节点，从节点将读操作同步到主节点。而这也是redis选择主从结构的原因。
+![主从集群结构.png](src%2Fmain%2Fresources%2Fimg%2F%D6%F7%B4%D3%BC%AF%C8%BA%BD%E1%B9%B9.png)
+#### 数据同步原理
+主从第一次同步是全量同步。
+master向slave请求数据同步，slave执行replicaof命令建立连接。
+master判断是否第一次同步，是第一次，返回master的数据版本信息。
+slave保存版本信息。
+
+![img.png](主从复制-全量同步.png)
+
+** master如何判断slave是否第一次同步 **
+- replication id：简称replid，是数据集的标记。id一致则说明是统一数据集，每个master都有唯一的replid，slave则会继承master的replid。如果id不一致，则说明是不同的数据集，需要全量同步。
+- offset：偏移量，随着记录再repl_baklog中的增加而增加,slave完成同步时也会记录当前同步的offset。如果slave的offset小于master的offset，则说明slave落后于master，需要更新。
+因此slave做数据同步，必须向master声明自己的replid和offset，master根据slave的replid和offset判断是否需要全量同步。
+
+注意：repl_baklog大小有上限，写满后会覆盖最早的数据，如果slave断开时间过久，导致数据被覆盖，则无法实现增量同步，只能再次全量同步。
+可以从以下几个方面来优化redis主从集群
+- 在master中配置repl-diskless-sync yes，slave在第一次同步时，master不会将数据写入磁盘，而是直接发送给slave，减少磁盘IO，提高效率。
+- redis单节点内存占用不要太大，减少RDB导致的过多磁盘io。
+- 在master中配置repl-backlog-size，增大repl_baklog的大小，或者发现slave宕机时尽快实现故障恢复，减少数据被覆盖的可能性。
+- 限制一个master的slave节点数量，如果实在有很多slave，则可以采用主-从-从链式结构，减少master压力。
+
+
+#### 服务状态监控
+Sentinel基于心跳机制检测服务状态，每个1秒向集群的每个实例发送ping命令：
+- 主观下线：如果sentinel在指定时间内没有收到实例的回复，则认为实例主观下线。
+- 客观下线：如果超过指定数量的sentinel认为实例主观下线，则认为实例客观下线。这个值最好超过sentinel的数量的一半，否则可能出现脑裂。
+#### 选举新的master
+当master主观下线后，sentinel会从剩余的slave中选举一个新的master，选举的原则如下：
+- 首先判断slave节点与master节点断开时间长短，如果超过指定值，则不考虑该slave。
+- 然后判断slave的slave-priority值，越小优先级越高，如果是0，则不考虑该slave。
+- 判断slave的offset，越大说明数据越新，优先级越高。
+- 如果有多个slave满足上述条件，则选择runid最小的slave作为新的master。
+
+#### 故障转移
+当选中了其中一个slave作为新的master后，需要将其他slave切换到新的master上，这个过程叫做故障转移。
+故障转移的步骤如下：
+- sentinel向master发送slaveof no one命令。
+- 向其他所有slave节点发送slaveof newmaster命令,让这些slave成为新的master的从节点，开始从新的master上面同步数据。
+- sentinel将故障节点标记为slave，当故障节点恢复后，会成为新的master的从节点。
