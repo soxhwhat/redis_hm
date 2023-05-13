@@ -10,7 +10,16 @@ spring:
     password:
 #      redis配置哨兵模式
   redis:
-#    sentinel:
+#    redis配置集群模式
+#    cluster:
+#      nodes:
+#        - 127.0.0.1:6379
+#        - 127.0.0.1:6380
+#        - 127.0.0.1:6381
+#        - 127.0.0.1:6382
+#        - 127.0.0.1:6383
+#        - 127.0.0.1:6384
+#    #    sentinel:
 #      master: mymaster
 #      nodes:
 #          - 127.0.0.1:26379

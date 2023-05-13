@@ -285,7 +285,7 @@ master向slave请求数据同步，slave执行replicaof命令建立连接。
 master判断是否第一次同步，是第一次，返回master的数据版本信息。
 slave保存版本信息。
 
-![img.png](主从复制-全量同步.png)
+![主从复制-全量同步.png](src%2Fmain%2Fresources%2Fimg%2F%D6%F7%B4%D3%B8%B4%D6%C6-%C8%AB%C1%BF%CD%AC%B2%BD.png)
 
 ** master如何判断slave是否第一次同步 **
 - replication id：简称replid，是数据集的标记。id一致则说明是统一数据集，每个master都有唯一的replid，slave则会继承master的replid。如果id不一致，则说明是不同的数据集，需要全量同步。
@@ -317,3 +317,26 @@ Sentinel基于心跳机制检测服务状态，每个1秒向集群的每个实�
 - sentinel向master发送slaveof no one命令。
 - 向其他所有slave节点发送slaveof newmaster命令,让这些slave成为新的master的从节点，开始从新的master上面同步数据。
 - sentinel将故障节点标记为slave，当故障节点恢复后，会成为新的master的从节点。
+
+### 分片集群
+主从和哨兵可以解决高可用、高并发读的问题。但是依然有两个问题没有解决：
+- 海量数据存储问题
+- 高并发写的问题
+使用分片集群可以解决上述问题，分片集群特征:
+- 集群中有多个master节点，每个master节点负责一部分数据。
+- 每个master都可以有多个slave节点
+- master节点之间通过ping检测彼此健康状态
+- 客户端请求可以访问集群任意节点，最终都会转发到正确节点
+![分片集群.png](src%2Fmain%2Fresources%2Fimg%2F%B7%D6%C6%AC%BC%AF%C8%BA.png)
+#### 散列插槽
+Redis会把每一个master节点映射到0-16383个槽位，每个槽位对应一个数据片段，每个master节点负责一部分槽位，每个槽位只属于一个master节点，这样就实现了数据的分片。
+数据key不是与节点绑定，而是与插槽绑定。redis会根据key的有效部分计算插槽值，分两种情况：
+- key中包含{}，则{}中的内容作为key的有效部分，计算插槽值。
+- key中不包含{}，则key的全部作为有效部分，计算插槽值。
+例如：key是num，那么就根据num计算。如果是{soxhwhat}num,则根据soxhwhat计算。计算方式是crc16算法得到一个hash值，然后对16384取模，得到一个槽位值。
+- Redis 如何判断某个key在哪个实例
+  - 将16384个插槽分配到不同的实例
+  - 根据key的有效部分计算哈希值，对16384取余
+  - 余数作为插槽，寻找slot所在实例
+- 如何将同一类数据固定的保存在同一个redis实例中
+  - 同一个类商品前缀使用相同的有效部分，例如key都以{keyid}为前缀
