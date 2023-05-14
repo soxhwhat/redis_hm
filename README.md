@@ -340,3 +340,35 @@ Redis会把每一个master节点映射到0-16383个槽位，每个槽位对应�
   - 余数作为插槽，寻找slot所在实例
 - 如何将同一类数据固定的保存在同一个redis实例中
   - 同一个类商品前缀使用相同的有效部分，例如key都以{keyid}为前缀
+### 多级缓存
+#### 传统缓存的问题
+传统的缓存策略一般是请求到达tomcat后，先查询redis，如果redis中没有，则查询mysql，然后将查询结果写入redis，下次请求就可以直接从redis中获取。
+这种方式存在以下问题：
+- 请求要经过tomcat处理，tomcat的性能成为整个系统的瓶颈
+- redis缓存失效时，会导致大量请求直接访问mysql，造成mysql压力过大
+#### 多级缓存方案
+多级缓存方案是将缓存分为多个层级，每个层级都有自己的缓存策略，请求到达时，先查询最上层的缓存，如果没有命中，则查询下一层缓存，直到最后一层缓存。
+![多级缓存.png](src%2Fmain%2Fresources%2Fimg%2F%B6%E0%BC%B6%BB%BA%B4%E6.png)
+#### 本地进程缓存Caffine
+基本使用
+```
+        Cache<String, String> cache = Caffeine.newBuilder()
+                .maximumSize(10)
+                .expireAfterWrite(10, TimeUnit.MINUTES)
+                .build();
+        
+        // 存数据
+        cache.put("name", "虎哥");
+        // 取数据
+        cache.getIfpresent("name");
+        
+        // 取数据，如果没有，就执行后面的方法，然后将返回值写入缓存
+        String name = cache.get("name", key -> {
+            // 从数据库中查询
+            return "虎哥";
+        });
+```
+- 提供了三种缓存驱逐策略：
+  - 基于容量：maximumSize
+  - 基于时间：expireAfterAccess、expireAfterWrite
+  - 基于引用：weakKeys、weakValues、softValues（不建议使用）

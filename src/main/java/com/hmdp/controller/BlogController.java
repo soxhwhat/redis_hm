@@ -2,6 +2,7 @@ package com.hmdp.controller;
 
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.github.benmanes.caffeine.cache.Cache;
 import com.hmdp.dto.Result;
 import com.hmdp.dto.UserDTO;
 import com.hmdp.entity.Blog;
@@ -26,6 +27,9 @@ public class BlogController {
 
     @Resource
     private IBlogService blogService;
+
+    @Resource
+    private Cache<Long, Blog> blogCache;
 
     @PostMapping
     public Result saveBlog(@RequestBody Blog blog) {

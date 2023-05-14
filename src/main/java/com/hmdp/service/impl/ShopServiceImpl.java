@@ -61,6 +61,8 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
         }
         // 7.返回
         return Result.ok(shop);
+//        // 8.返回shop便于cache缓存
+//        return shop;
     }
 
     @Override

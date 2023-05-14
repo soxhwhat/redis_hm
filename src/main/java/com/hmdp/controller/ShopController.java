@@ -3,6 +3,7 @@ package com.hmdp.controller;
 
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.github.benmanes.caffeine.cache.Cache;
 import com.hmdp.dto.Result;
 import com.hmdp.entity.Shop;
 import com.hmdp.service.IShopService;
@@ -25,6 +26,8 @@ public class ShopController {
     @Resource
     public IShopService shopService;
 
+    @Resource
+    private Cache<Long, Shop> shopCache;
     /**
      * 根据id查询商铺信息
      * @param id 商铺id
@@ -33,6 +36,8 @@ public class ShopController {
     @GetMapping("/{id}")
     public Result queryShopById(@PathVariable("id") Long id) {
         return shopService.queryById(id);
+        // 从缓存中获取,如果缓存中已经存在，则直接返回，不会重复查询数据库减轻压力
+//        return shopCache.get(id, key -> shopService.queryById(id));
     }
 
     /**
