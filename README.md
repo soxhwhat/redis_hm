@@ -606,3 +606,28 @@ ngx.say(cjson.encode(item))
 ```
 
 
+#### Tomcat集群的负载均衡
+![tomcat集群的负载均衡.png](src%2Fmain%2Fresources%2Fimg%2Ftomcat%BC%AF%C8%BA%B5%C4%B8%BA%D4%D8%BE%F9%BA%E2.png)
+为了避免本地缓存数据不共享的情况，我们基于request_uri地址进行hash运算实现。当请求到达一个服务器，下次该请求再次发送的时候还会到达该服务器。
+```
+# tomcat集群配置
+upstream tomcat-cluster {
+    hash $request_uri;
+    server localhost:8081;
+    server localhost:8082;
+}
+ server {
+        listen       80;
+        server_name  localhost;
+        location ~ / api/item/(\d+) {
+            proxy_pass http://tomcat-cluster
+        }
+}
+
+```
+
+#### 冷启动与缓存预热
+冷启动： 服务刚刚启动时，Redis并没有缓存，如果所有商品数据都在第一次查询时添加缓存，可能会导致大量的请求到达数据库，造成数据库压力过大。
+缓存预热： 在服务启动时，我们可以利用大数据统计用户访问的热点数据，在项目启动时将这些热点数据提前查询并保存到redis中。
+
+对于本项目来说，数据量较少，可以启动时将所有数据都放入缓存中。
