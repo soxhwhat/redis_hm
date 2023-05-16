@@ -4,6 +4,7 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.hmdp.entity.Blog;
 import com.hmdp.entity.Shop;
+import com.hmdp.entity.Voucher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -28,6 +29,14 @@ public class CaffeineConfig {
 
     @Bean
     public Cache<Long, Blog> blogCache() {
+        return Caffeine.newBuilder()
+                .initialCapacity(100)
+                .maximumSize(10_000)
+                .build();
+    }
+
+    @Bean
+    public Cache<Long, Voucher> voucherCache() {
         return Caffeine.newBuilder()
                 .initialCapacity(100)
                 .maximumSize(10_000)

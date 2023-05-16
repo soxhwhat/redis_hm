@@ -1,8 +1,10 @@
 package com.hmdp.utils;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hmdp.entity.Blog;
 import com.hmdp.entity.Shop;
+import com.hmdp.entity.Voucher;
 import com.hmdp.service.IBlogService;
 import com.hmdp.service.IShopService;
 import org.springframework.beans.factory.InitializingBean;
@@ -53,5 +55,16 @@ public class RedisHandler implements InitializingBean {
             redisTemplate.opsForValue().set(CACHE_SHOP_KEY  + shop.getId(), json);
         }
 
+    }
+
+    public void saveVoucher(Voucher voucher) throws JsonProcessingException {
+        // 1.将数据转换为json字符串
+        String json = RedisHandler.MAPPER.writeValueAsString(voucher);
+        // 2.将数据存储到redis中
+        redisTemplate.opsForValue().set(RedisConstants.SECKILL_STOCK_KEY + voucher.getId(), json);
+    }
+
+    public void deleteItemById(Long id) {
+        redisTemplate.delete(RedisConstants.SECKILL_STOCK_KEY + id);
     }
 }

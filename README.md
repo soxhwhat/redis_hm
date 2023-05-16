@@ -756,3 +756,51 @@ local function read_data(key, path, params)
     return resp
 end
 ```
+
+### 缓存同步策略
+缓存数据同步的常见方式有三种：
+- 设置有效性：给缓存设置有效期，到期后自动删除，再次查询时更新
+  - 优点：实现简单
+  - 缺点：时效性差，数据不一致
+  - 适用场景：数据时效性不高，数据一致性要求不高
+- 同步双写：在写数据库时，同时写入缓存
+  - 优点：数据一致性高
+  - 缺点：实现复杂，性能低
+  - 适用场景：数据一致性要求高，数据时效性不高
+- 异步双写：在写数据库时，同时写入消息队列，由消息队列异步写入缓存
+  - 优点：性能高，数据一致性高
+  - 缺点：时效性一般
+  - 适用场景：数据一致性要求高，数据时效性不高
+#### 基于Canal的异步通知
+![Canal监听binlog实现异步通知.png](src%2Fmain%2Fresources%2Fimg%2FCanal%BC%E0%CC%FDbinlog%CA%B5%CF%D6%D2%EC%B2%BD%CD%A8%D6%AA.png)
+canal是阿里巴巴旗下的一款开源项目。基于数据库增量日志解析，提供增量数据订阅和消费。
+MySQL的binlog是二进制日志，记录了数据库的增量更新数据，包括增删改，但不包括查询。主从同步原理如下：
+- 主库将数据更新写入binlog
+- 从库连接主库，将主库的binlog复制到自己的relay log
+- 从库读取relay log，将数据更新写入自己的数据库
+Canal就是把自己成mysql的一个slave节点，监听master的binlog，再把得到的变化信息通知给注册的客户端，进而完成其它数据库的同步。
+
+- 开启主从同步
+```
+create user canal@'%' identified by 'canal';
+grant select, replication slave, replication client on *.* to canal@'%';
+flush privileges;
+```
+
+- 引入canal依赖
+```
+<dependency>
+    <groupId>com.alibaba.otter</groupId>
+    <artifactId>canal.client</artifactId>
+    <version>1.1.4</version>
+</dependency>
+```
+- 编写配置
+```
+canal:
+    destination: example
+    server: 127.0.0.1:11111 # canal server地址
+```
+- 编写监听器
+
+![多级缓存终极方案.png](src%2Fmain%2Fresources%2Fimg%2F%B6%E0%BC%B6%BB%BA%B4%E6%D6%D5%BC%AB%B7%BD%B0%B8.png)

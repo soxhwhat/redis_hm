@@ -1,5 +1,8 @@
 server:
   port: 8081
+canal:
+  destination: example
+  server: 127.0.0.1:11111 # canal server地址
 spring:
   application:
     name: hmdp

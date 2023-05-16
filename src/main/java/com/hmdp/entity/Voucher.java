@@ -7,7 +7,9 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
+import org.springframework.data.annotation.Id;
 
+import javax.persistence.Column;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
@@ -30,12 +32,16 @@ public class Voucher implements Serializable {
     /**
      * 主键
      */
+    // 标记表中的Id字段
+    @Id
     @TableId(value = "id", type = IdType.AUTO)
     private Long id;
 
     /**
      * 商铺id
      */
+    // 标记表中与属性名不一致的字段
+    @Column(name = "shop_id")
     private Long shopId;
 
     /**
