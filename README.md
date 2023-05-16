@@ -631,3 +631,83 @@ upstream tomcat-cluster {
 缓存预热： 在服务启动时，我们可以利用大数据统计用户访问的热点数据，在项目启动时将这些热点数据提前查询并保存到redis中。
 
 对于本项目来说，数据量较少，可以启动时将所有数据都放入缓存中。
+
+
+#### OpenResty的Redis模块
+OpenResty提供了Redis模块，可以直接操作Redis。
+- 引入Redis模块，并初始化对象
+```
+-- 导入redis模块
+local redis = require("resty.redis")
+-- 初始化redis对象
+local red = redis:new()
+-- 设置超时时间
+red:set_timeout(1000)
+```
+- 封装函数，用来释放redis连接
+```
+-- 封装函数，用来释放redis连接
+local function close_redis(red)
+    if not red then
+        return
+    end
+    -- 释放连接(连接池实现)
+    local pool_max_idle_time = 10000 -- 毫秒
+    local pool_size = 100 -- 连接池大小
+    local ok, err = red:set_keepalive(pool_max_idle_time, pool_size)
+    if not ok then
+        ngx.log(ngx.ERR, "set keepalive error: ", err)
+    end
+end
+```
+- 封装函数，从redis读取数据并返回
+```
+-- 查询redis的方法，ip和port是redis地址，key是查询的key
+local function query_redis(ip, port, key)
+    -- 连接redis
+    local ok, err = red:connect(ip, port)
+    if not ok then
+        ngx.log(ngx.ERR, "connect to redis error: ", err)
+        return close_redis(red)
+    end
+    -- 查询数据
+    local resp, err = red:get(key)
+    if not resp then
+        ngx.log(ngx.ERR, "get redis content error: ", err)
+        return close_redis(red)
+    end
+    -- 得到的数据为空时，resp是ngx.null
+    if resp == ngx.null then
+        resp = nil
+    end
+    -- 将redis连接放回连接池
+    close_redis(red)
+    return resp
+end
+# 封装查询函数
+local function read_data(key, path, params)
+    -- 从redis中读取数据
+    local resp = query_redis("127.0.0.1", 6379, key)
+    -- 如果数据为空，则从数据库中读取数据
+    if not resp then
+        local respJson = http_query(path, ngx.HTTP_GET, params)
+        resp = respJson.body
+        -- 将数据写入redis
+        local ok, err = red:set(key, resp)
+        if not ok then
+            ngx.log(ngx.ERR, "set redis content error: ", err)
+        end
+    end
+    return resp
+end
+
+-- 将函数放到函数库中
+local _M = {
+    http_query = http_query
+    query_redis = query_redis
+}
+return _M
+```
+
+实例代码：
+```
