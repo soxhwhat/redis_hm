@@ -688,7 +688,7 @@ end
 local function read_data(key, path, params)
     -- 从redis中读取数据
     local resp = query_redis("127.0.0.1", 6379, key)
-    -- 如果数据为空，则从数据库中读取数据
+    -- 如果数据为空，则从tomcat中读取数据
     if not resp then
         local respJson = http_query(path, ngx.HTTP_GET, params)
         resp = respJson.body
@@ -709,5 +709,50 @@ local _M = {
 return _M
 ```
 
-实例代码：
+
+
+#### OpenResty本地缓存(多级缓存最终版）
+OpenResty提供了lua_shared_dict模块，可以在本地缓存数据，在nginx的多个worker之间共享数据，实现缓存功能。
+- 开启共享字典，在nginx.conf的http中配置
+```
+# 共享字典，在nginx.conf的http中配置
+http {
+    # 开启共享字典
+    lua_shared_dict my_cache 150m;
+}
+```
+- 操作共享字典
+```item.lua
+-- 获取本地缓存对象
+local cache_ngx = ngx.shared.my_cache
+-- 从缓存中读取数据
+local resp = cache_ngx:get(key)
+-- 存储，指定key,value,过期时间，单位s，默认为0，表示永不过期
+local succ, err, forcible = cache_ngx:set(key, value, exptime)
+
+
+# 封装查询函数
+local function read_data(key, path, params)
+    -- 从本地缓存中读取数据
+    local resp = cache_ngx:get(key)
+    if not resp then
+        ngx.log(ngx.ERR, "get local cache error: ", err)
+    -- 从redis中读取数据
+        local resp = query_redis("127.0.0.1", 6379, key)
+        -- 如果数据为空，则从tomcat中读取数据
+        if not resp then
+            ngx.log(ngx.ERR, "get redis content error: ", err)
+            local respJson = http_query(path, ngx.HTTP_GET, params)
+            resp = respJson.body
+            -- 将数据写入redis
+            local ok, err = red:set(key, resp)
+            if not ok then
+                ngx.log(ngx.ERR, "set redis content error: ", err)
+            end
+        end
+    end
+    -- 将数据写入本地缓存
+    local succ, err, forcible = cache_ngx:set(key, resp, 60 * 60)
+    return resp
+end
 ```
