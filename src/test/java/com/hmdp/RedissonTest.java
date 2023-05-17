@@ -1,9 +1,12 @@
 package com.hmdp;
 
+import com.alibaba.fastjson.JSON;
 import com.hmdp.service.IBlogService;
+import com.hmdp.utils.Batch;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.redisson.api.BatchResult;
 import org.redisson.api.RKeys;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
@@ -14,6 +17,7 @@ import javax.annotation.Resource;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -90,6 +94,19 @@ class RedissonTest {
 //            RKeys keys = redissonClient.getKeys();
 //
 //        }
+    }
+
+    /**
+     * pipeline批量操作
+     */
+    @Test
+    public void batchTest() throws InterruptedException{
+        Batch batch = Batch.of(false, 3000);
+        Date date = new Date();
+        batch.addToSet("TEST_SET_KEY", 1, new Date(date.getTime() + 10000));
+        batch.set("TEST_STRING_KEY", "test");
+        BatchResult result = batch.execute();
+        System.out.println(JSON.toJSONString(result));
     }
 
 }

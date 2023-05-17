@@ -843,4 +843,42 @@ canal:
   - 大哈希：hash结构中的field数量超过10000个
     - 解决方案：将大哈希拆分成多个小哈希，将id/100作为key，将id%100作为field，这样每100个元素为一个hash 
 #### 批处理优化
+##### pipeline
+- MSET
+redis里面提供了多个MXXX这样的命令，可以实现批量插入数据，例如mset、hmset。
+```
+String[] arr = new String[10000];
+for (int i = 0; i < 10000; i++) {
+    arr[i] = "key" + i;
+}
+jedis.mset(arr);
+```
+- Pipeline
+虽然MSET可以批处理，但是却只能处理部分数据类型，因此如果有对复杂数据类型的批处理需要，建议使用pipeline功能。
+```
+        Batch batch = Batch.of(false, 3000);
+        Date date = new Date();
+        batch.addToSet("TEST_SET_KEY", 1, new Date(date.getTime() + 10000));
+        batch.set("TEST_STRING_KEY", "test");
+        BatchResult result = batch.execute();
+        System.out.println(JSON.toJSONString(result));
+```
+##### 集群下的批处理
+如MSET或pipeline这样的批处理需要在一次请求中携带多条命令，而此时如果redis是一个集群，那么批处理命令的多个key必须落在一个插槽中，否则就会执行失败。
+![集群下的批处理.png](src%2Fmain%2Fresources%2Fimg%2F%BC%AF%C8%BA%CF%C2%B5%C4%C5%FA%B4%A6%C0%ED.png)
+Spring官方实现方案,通过SlotHash工具类，将多个key映射到同一个插槽中。异步化线程去执行批处理命令，最后将结果合并返回。
+```
+Map<Integer, List<K>> partitioned = SlotHash.partition(this.codec, map.keySet());
+Iterator var4 = partitioned.entrySet().iterator();
+
+while(var4.hasNext()) {
+    Map.Entry<Integer, List<K>> entry = (Map.Entry)var4.next();
+    Map<K, V> op = new HashMap();
+    ((List)entry.getValue()).forEach((k) -> {
+        op.put(k, map.get(k));
+    });
+    RedisFuture<String> mset = super.mset(op);
+    executions.put(entry.getKey(), mset);
+}
+```
 #### 服务端优化
