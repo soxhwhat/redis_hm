@@ -4,8 +4,10 @@ import com.hmdp.service.IBlogService;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.redisson.api.RKeys;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
+import org.springframework.boot.autoconfigure.data.redis.RedisProperties;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import javax.annotation.Resource;
@@ -68,6 +70,26 @@ class RedissonTest {
     @Test
     public void testLike() {
         blogService.likeBlog(7L);
+    }
+
+    public static final int STR_MAX_LEN = 10 * 1024;
+    public static final int HASH_MAX_LEN = 500;
+
+    /**
+     * Scan实现扫描bigkey
+     */
+    @Test
+    public void testScan() {
+//        int maxLen = 0;
+//        long len = 0;
+//
+//        String cursor = "0";
+//
+//        do {
+//            // 扫描并获取一部分key
+//            RKeys keys = redissonClient.getKeys();
+//
+//        }
     }
 
 }

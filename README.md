@@ -804,3 +804,43 @@ canal:
 - 编写监听器
 
 ![多级缓存终极方案.png](src%2Fmain%2Fresources%2Fimg%2F%B6%E0%BC%B6%BB%BA%B4%E6%D6%D5%BC%AB%B7%BD%B0%B8.png)
+### Redis最佳实践
+#### Redis键值设计
+- 优雅的key结构
+  - 遵循基本格式：[业务名称]:[数据名]:[id]
+  - 长度不超过44字节
+  - 不包含特殊字符
+  例如：我们的登录业务，保存用户信息，其key是这样的：login:user:10
+  - 优点
+    - 可读性强
+    - 避免key冲突
+    - 便于管理
+    - 更节约内存：key是string类型，底层编码包含int、embstr、raw三种，其中int和embstr类型的key，只需要占用8字节，而raw类型的key，需要占用内存空间更大，所以，优雅的key设计，可以节约内存空间。
+
+- 什么是BigKey
+    BigKey通常以key的大小和key中成员的数量来综合判定，例如：
+    - key本身的数据量过大：一个string类型的key，值大小为5MB
+    - key中成员数量过多：一个hash类型的key，成员数量为10万个
+    - key中成员的数据量过大：一个hash类型的key，它的成员数量虽然只有1000个但是这些成员的value总大小为100mb
+- BigKey的危害
+  - 网络阻塞：对BigKey执行读请求时，少量的QPS就可能导致带宽使用率被占满，导致redis实例乃至所在物理机变慢
+  - 数据倾斜：BigKey所在的redis实例内存使用率远超过其他实例，无法使数据分片的内存资源达到均衡
+  - redis阻塞：对元素较多的hash、list、zset等运算会耗时较久，使主线程被阻塞
+  - Cpu压力：对bigkey的数据序列化和反序列化会导致cpu的使用率飙升，影响redis实例和其他本机应用
+- 如何发现BigKey
+  - redis-cli --bigkeys:遍历分析所有key，并返回key 的整体统计信息与每个数据的top1的bigkey
+  - scan命令：遍历分析所有key，并返回key的整体统计信息。scan提供一个游标cursor，用于告诉服务器下次遍历的起始位置，避免一次性返回大量的key，导致客户端阻塞。当返回游标为0时，表示遍历完成。
+  - 网络监控：使用redis-cli --stat命令，查看redis实例的网络流量，如果发现网络流量突然增大，那么就有可能是BigKey导致的。
+  - 第三方工具：redis-rdb-tools分析工具，可以分析redis的rdb文件，找出其中的BigKey
+- 如何删除bigkey
+    Bigkey内存占用多，删除这样的key需要耗费很长时间。如果直接使用del命令，会导致redis实例阻塞，影响其他请求的处理。所以，删除BigKey时，需要使用unlink命令，它会将key标记为删除，然后异步删除key，不会阻塞主线程。
+- 恰当的数据结构
+例1：比如存储一个user对象，我们有三个存储方式：
+![恰当的数据结构.png](src%2Fmain%2Fresources%2Fimg%2F%C7%A1%B5%B1%B5%C4%CA%FD%BE%DD%BD%E1%B9%B9.png)
+- 方式一：json字符串
+- 方式二：字段打散
+- 方式三：hash结构
+  - 大哈希：hash结构中的field数量超过10000个
+    - 解决方案：将大哈希拆分成多个小哈希，将id/100作为key，将id%100作为field，这样每100个元素为一个hash 
+#### 批处理优化
+#### 服务端优化
