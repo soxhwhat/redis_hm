@@ -882,3 +882,25 @@ while(var4.hasNext()) {
 }
 ```
 #### 服务端优化
+##### 持久化配置
+redis持久化虽然可以保证数据安全，但也会带来很多额外开销，因此持久化请遵循以下建议
+- 用来做缓存的redis实例尽量不要开启持久化功能
+- 建议关闭RDB持久化功能，使用AOF持久化
+- 利用脚本定期在slave节点做RDB，实现数据备份。
+- 设置合理的rewrite触发机制，避免频繁的bgrewrite
+- 配置no-appendfsync-on-rewrite，避免bgrewrite时阻塞主线程
+##### 慢查询
+redis提供了慢查询功能，可以记录执行时间超过指定阈值的命令，可以通过slowlog-log-slower-than参数设置阈值，默认值为10ms。
+慢查询会被放入慢查询日志中，日志的长度有上限，可以通过slowlog-max-len参数设置，默认值为128。
+查看慢查询日志列表
+- slowlog get [n]:返回最近n条慢查询日志
+- slowlog len:返回慢查询日志的长度
+- slowlog reset:清空慢查询日志
+##### 命令及安全配置
+为了避免这样的漏洞，这里给出一些建议:
+- Redis一定要设置密码
+- 禁止线上使用下面命令: keys、flushall、flushdb、config set等命令。可以利用rename-command禁用。
+- bind:限制网卡，禁止外网网卡访问
+- 开启防火墙 
+- 不要使用Root账户启动Redis 
+- 尽量不是有默认的端口
