@@ -37,11 +37,11 @@
 缓存击穿问题也叫热点key问题，就是一个被高并发访问并且缓存重建业务较复杂的key突然失效了，无数的请求访问这个key，都会去数据库中查询，造成数据库压力过大。
 常用的解决方案：
 
-1.
-互斥锁，当缓存失效时，加锁，防止多个线程同时去数据库中查询数据，然后更新缓存。![img.png](src/main/resources/img/互斥锁.png)
-    1. 性能差，大部分线程均需要等待一个线程去数据库中查询数据，然后更新缓存。
+1.互斥锁，当缓存失效时，加锁，防止多个线程同时去数据库中查询数据，然后更新缓存。
+    - 性能差，大部分线程均需要等待一个线程去数据库中查询数据，然后更新缓存。
+![img.png](src/main/resources/img/互斥锁.png)
 2. 逻辑过期时间，当缓存失效时，设置一个逻辑过期时间，当逻辑过期时间到达时，再去数据库中查询数据，然后更新缓存。
-   ![img.png](src/main/resources/img/逻辑过期.png)
+![img.png](src/main/resources/img/逻辑过期.png)
 
 ### 全局唯一ID
 
@@ -73,8 +73,7 @@
 
 #### 分布式锁实现
 
-![分布式锁.png](src%2Fmain%2Fresources%2Fimg%2F%B7%D6%B2%BC%CA%BD%CB%F8.png)
-
+![分布式锁.png](src/main/resources/img/分布式锁.png)
 - 基于redis的分布式锁
   实现分布式锁需要实现的两个基本方法：
 - 获取锁：
@@ -87,12 +86,11 @@
 - 释放锁：
     - 手动释放 ``del thread1``
     - 超时释放
-      ![redis分布式锁.png](src%2Fmain%2Fresources%2Fimg%2Fredis%B7%D6%B2%BC%CA%BD%CB%F8.png)
-
+![redis分布式锁.png](src/main/resources/img/redis分布式锁.png)
 #### 分布式锁可能会出现的问题
 
 由于业务代码线程阻塞的时间过长，导致redis分布式锁到期释放，其他线程获取到锁，导致业务代码重复执行
-![业务代码超时阻塞.png](src%2Fmain%2Fresources%2Fimg%2F%D2%B5%CE%F1%B4%FA%C2%EB%B3%AC%CA%B1%D7%E8%C8%FB.png)
+![业务代码超时阻塞.png](src/main/resources/img/业务代码超时阻塞.png)
 解决方法：释放锁的时候，判断锁是否是自己的，如果是自己的，则释放锁，否则不释放锁
 
 - 改进redis分布式锁
@@ -105,15 +103,16 @@
 目前存在的问题
 
 1. 不可重入：同一个线程在没有释放锁之前，不能再次获取锁。当线程在执行A方法时，获取到锁，然后在A方法中调用B方法，B方法也需要获取锁，但是由于锁已经被A方法获取，所以B方法获取锁失败，导致B方法无法执行。
-   解决：通过借助哈希数据结构来实现可重入锁![可重入锁原理.png](src%2Fmain%2Fresources%2Fimg%2F%BF%C9%D6%D8%C8%EB%CB%F8%D4%AD%C0%ED.png)
-    2. 不可重试：获取锁只尝试一次就返回false，没有重试机制
-       解决：获取锁时，在重试时间内，借助订阅和信号量机制避免无限制重试，占用cpu
-        ```
-       if (ttl >= 0L && ttl < time) {
-        ((RedissonLockEntry)subscribeFuture.getNow()).getLatch().tryAcquire(ttl, TimeUnit.MILLISECONDS);
-         } else {
-             ((RedissonLockEntry)subscribeFuture.getNow()).getLatch().tryAcquire(time, TimeUnit.MILLISECONDS);
-         }
+   解决：通过借助哈希数据结构来实现可重入锁
+![可重入锁原理.png](src/main/resources/img/可重入锁原理.png)
+2. 不可重试：获取锁只尝试一次就返回false，没有重试机制
+   解决：获取锁时，在重试时间内，借助订阅和信号量机制避免无限制重试，占用cpu
+    ```
+   if (ttl >= 0L && ttl < time) {
+    ((RedissonLockEntry)subscribeFuture.getNow()).getLatch().tryAcquire(ttl, TimeUnit.MILLISECONDS);
+     } else {
+         ((RedissonLockEntry)subscribeFuture.getNow()).getLatch().tryAcquire(time, TimeUnit.MILLISECONDS);
+     }
    ```
 3. 超时释放
    利用watchDog，每隔一段时间（releaseTime/3）去检查锁是否过期，如果过期则释放锁
@@ -144,7 +143,7 @@
 ### 秒杀业务优化
 
 原本业务需要通过tomcat进行库存判断和一人一单，但这样导致业务速度变慢，所以需要将库存判断和一人一单放到redis中，通过异步获取消息队列中的消息进行处理
-![img.png](src/main/resources/img/秒杀消息队列.png)
+![秒杀消息队列.png](src/main/resources/img/秒杀消息队列.png)
 通过lua脚本实现库存判断和一人一单
 
 - 优化
@@ -152,7 +151,7 @@
     - 基于lua脚本，判断秒杀库存，一人一单，决定用户是否抢购成功
     - 如果抢购成功，将优惠券信息和用户id封装后放入阻塞队列中
     - 开启线程任务，不断从阻塞队列中获取信息，实现异步下单功能
-      ![img.png](src/main/resources/img/异步秒杀lua+消息队列.png)
+      ![异步秒杀lua+消息队列](src/main/resources/img/异步秒杀lua+消息队列.png)
 
 #### 基于阻塞队列的异步秒杀存在哪些问题
 
@@ -246,8 +245,7 @@ XACK key groupname ID [ID ...]
 简单示例：XACK mystream group1 1600000000001-0 //将1600000000001-0消息确认为已消费
 ```
 
-![redis消息队列.png](src%2Fmain%2Fresources%2Fimg%2Fredis%CF%FB%CF%A2%B6%D3%C1%D0.png)
-
+![redis消息队列.png](src/main/resources/img/redis消息队列.png)
 ### 关注推送
 
 关于推送也叫Feed流，是一种消息推送的方式，可以实现类似微博、抖音、微信朋友圈的功能。为用户持续的提供沉浸式的体验，通过无限下拉刷新获取新的消息。
@@ -256,27 +254,29 @@ XACK key groupname ID [ID ...]
 
 - Timeline: 不做内容筛选，简单按照内容发布时间排序，常用于好友或关注，例如微博、微信朋友圈
   实现方案 ![img.png](src/main/resources/img/feed流模式.png)
-    - 拉模式：也叫做读扩散。 ![拉模式.png](src%2Fmain%2Fresources%2Fimg%2F%C0%AD%C4%A3%CA%BD.png)
+    - 拉模式：也叫做读扩散。![拉模式.png](src/main/resources/img/拉模式.png)
         - 优点：实现简单，不需要额外的存储空间
         - 缺点：当用户关注的人很多时，需要拉取的消息很多，会影响性能。延迟高
-    - 推模式：也叫做写扩散。 ![推模式.png](src%2Fmain%2Fresources%2Fimg%2F%C0%AD%C4%A3%CA%BD.png)
+    - 推模式：也叫做写扩散。 ![推模式.png](src/main/resources/img/推模式.png)
         - 优点：性能高，延迟低
         - 缺点：实现复杂，由于需要写n份推送，需要额外的存储空间
     -
-    推拉结合模式，也叫做读写模式。对于活跃粉丝直接采用推模式，但对于普通粉丝来说，从博主的发件箱中拉取信息，采用拉模式。 ![推拉结合模式.png](src%2Fmain%2Fresources%2Fimg%2F%C0%AD%C4%A3%CA%BD.png)
+    推拉结合模式，也叫做读写模式。对于活跃粉丝直接采用推模式，但对于普通粉丝来说，从博主的发件箱中拉取信息，采用拉模式。
+![推拉结合模式.png](src/main/resources/img/推拉结合模式.png)
 
 - Recommendation: 根据用户的兴趣爱好，推荐相关的内容，例如抖音、今日头条
 
 #### Feed流的分页问题
 
-Feed流中的数据会不断更新，所以数据的角标也在变化，因此不能采用传统的分页模式。![feed流分页模式问题.png](src%2Fmain%2Fresources%2Fimg%2Ffeed%C1%F7%B7%D6%D2%B3%C4%A3%CA%BD%CE%CA%CC%E2.png)
+Feed流中的数据会不断更新，所以数据的角标也在变化，因此不能采用传统的分页模式。
+![feed流分页模式问题.png](src/main/resources/img/feed流分页模式问题.png)
 比如数据库中存在6，5，4，3，2，1数据，第一次分页取出6，5，4，此时插入一条新数据7，第二次分页由于数据角标发生改变，就会取出4，3，2数据。
 因此采用滚动分页模式。
 
 - 滚动分页模式：每次获取指定数量的数据，下次获取时，从上次获取的最后一条数据开始获取。
   这种模式获得的数据 ZREVRANGEBYSCORE z1 1000(MAX) 0(MIN) WITHSCORES LIMIT 0 3 -> 6,5,4
   下次获取的数据 ZREVRANGEBYSCORE z1 4(MAX) 0(MIN) WITHSCORES LIMIT 1 3 -> 3,2,1 (4就是上一次查询的最小值)
-  ![滚动分页模式.png](src%2Fmain%2Fresources%2Fimg%2F%C1%F7%B7%D6%D2%B3%C4%A3%CA%BD%CE%CA%CC%E2.png)
+![滚动分页模式.png](src/main/resources/img/滚动分页模式.png)
 
 滚动分页查询参数：
 1.MAX 当前时间戳 || 上一次查询最小值
@@ -307,7 +307,7 @@ dir ./
 ```
 
 bgsave开始时会fork主进程得到子进程，子进程共享主进程的内存数据，完成fork后读取内存数据并写入RDB文件。
-![img.png](src/main/resources/img/RDB bgsave.png)
+![RDB bgsave.png](src/main/resources/img/RDB bgsave.png)
 fork采用的是copy-on-write机制，即子进程在修改数据时，会先复制一份数据，然后再修改，这样就不会影响到主进程的数据。执行读操作时，会访问共享内存。
 
 #### AOF持久化
@@ -330,13 +330,13 @@ appendfsync no # 由操作系统决定何时触发fsync，效率最高，但是�
 因为是记录命令，AOF文件会比RDB文件大得多，而且AOF会记录对同一个key的多次写操作，但只有最后一次写操作是有效的，因此AOF文件会越来越大。通过执行bgrewriteaof命令，可以将AOF文件重写，重写后的AOF文件只会保留对同一个key的最后一次写操作，用最少的命令达到相同效果。
 
 #### RDB和AOF的选择
+![持久化策略分析.png](src/main/resources/img/持久化策略分析.png)
 
-![持久化策略分析.png](src%2Fmain%2Fresources%2Fimg%2F%B3%D6%BE%C3%BB%AF%B2%DF%C2%D4%B7%D6%CE%F6.png)
 
 ### Redis主从架构
 
 单节点redis的并发能力有限，为了提高并发能力，可以采用主从架构。主从架构中，主节点负责写操作，从节点负责读操作，主节点将写操作同步到从节点，从节点将读操作同步到主节点。而这也是redis选择主从结构的原因。
-![主从集群结构.png](src%2Fmain%2Fresources%2Fimg%2F%D6%F7%B4%D3%BC%AF%C8%BA%BD%E1%B9%B9.png)
+![主从集群结构.png](src/main/resources/img/主从集群结构.png)
 
 #### 数据同步原理
 
@@ -344,8 +344,7 @@ appendfsync no # 由操作系统决定何时触发fsync，效率最高，但是�
 master向slave请求数据同步，slave执行replicaof命令建立连接。
 master判断是否第一次同步，是第一次，返回master的数据版本信息。
 slave保存版本信息。
-
-![主从复制-全量同步.png](src%2Fmain%2Fresources%2Fimg%2F%D6%F7%B4%D3%B8%B4%D6%C6-%C8%AB%C1%BF%CD%AC%B2%BD.png)
+![主从复制-全量同步.png](src/main/resources/img/主从复制-全量同步.png)
 
 ** master如何判断slave是否第一次同步 **
 
@@ -397,7 +396,7 @@ Sentinel基于心跳机制检测服务状态，每个1秒向集群的每个实�
 - 每个master都可以有多个slave节点
 - master节点之间通过ping检测彼此健康状态
 - 客户端请求可以访问集群任意节点，最终都会转发到正确节点
-  ![分片集群.png](src%2Fmain%2Fresources%2Fimg%2F%B7%D6%C6%AC%BC%AF%C8%BA.png)
+![分片集群.png](src/main/resources/img/分片集群.png)
 
 #### 散列插槽
 
@@ -427,7 +426,7 @@ Redis会把每一个master节点映射到0-16383个槽位，每个槽位对应�
 #### 多级缓存方案
 
 多级缓存方案是将缓存分为多个层级，每个层级都有自己的缓存策略，请求到达时，先查询最上层的缓存，如果没有命中，则查询下一层缓存，直到最后一层缓存。
-![多级缓存.png](src%2Fmain%2Fresources%2Fimg%2F%B6%E0%BC%B6%BB%BA%B4%E6.png)
+![多级缓存.png](src/main/resources/img/多级缓存.png)
 
 #### 本地进程缓存Caffine
 
@@ -459,7 +458,7 @@ Redis会把每一个master节点映射到0-16383个槽位，每个槽位对应�
 #### openresty获取请求参数
 
 openresty提供了各种api用来获取不同类型的请求参数：
-![openresty获取请求参数.png](src%2Fmain%2Fresources%2Fimg%2Fopenresty%BB%F1%C8%A1%C7%EB%C7%F3%B2%CE%CA%FD.png)
+![openresty获取请求参数.png](src/main/resources/img/openresty获取请求参数.png)
 - 路径占位符：/item/{id}
 
 ```nginx.conf
@@ -607,7 +606,7 @@ ngx.say(cjson.encode(item))
 
 
 #### Tomcat集群的负载均衡
-![tomcat集群的负载均衡.png](src%2Fmain%2Fresources%2Fimg%2Ftomcat%BC%AF%C8%BA%B5%C4%B8%BA%D4%D8%BE%F9%BA%E2.png)
+![tomcat集群的负载均衡.png](src/main/resources/img/tomcat集群的负载均衡.png)
 为了避免本地缓存数据不共享的情况，我们基于request_uri地址进行hash运算实现。当请求到达一个服务器，下次该请求再次发送的时候还会到达该服务器。
 ```
 # tomcat集群配置
@@ -772,7 +771,8 @@ end
   - 缺点：时效性一般
   - 适用场景：数据一致性要求高，数据时效性不高
 #### 基于Canal的异步通知
-![Canal监听binlog实现异步通知.png](src%2Fmain%2Fresources%2Fimg%2FCanal%BC%E0%CC%FDbinlog%CA%B5%CF%D6%D2%EC%B2%BD%CD%A8%D6%AA.png)
+
+![Canal监听binlog实现异步通知.png](src/main/resources/img/Canal监听binlog实现异步通知.png)
 canal是阿里巴巴旗下的一款开源项目。基于数据库增量日志解析，提供增量数据订阅和消费。
 MySQL的binlog是二进制日志，记录了数据库的增量更新数据，包括增删改，但不包括查询。主从同步原理如下：
 - 主库将数据更新写入binlog
@@ -803,7 +803,7 @@ canal:
 ```
 - 编写监听器
 
-![多级缓存终极方案.png](src%2Fmain%2Fresources%2Fimg%2F%B6%E0%BC%B6%BB%BA%B4%E6%D6%D5%BC%AB%B7%BD%B0%B8.png)
+![多级缓存终极方案.png](src/main/resources/img/多级缓存终极方案.png)
 ### Redis最佳实践
 #### Redis键值设计
 - 优雅的key结构
@@ -836,7 +836,7 @@ canal:
     Bigkey内存占用多，删除这样的key需要耗费很长时间。如果直接使用del命令，会导致redis实例阻塞，影响其他请求的处理。所以，删除BigKey时，需要使用unlink命令，它会将key标记为删除，然后异步删除key，不会阻塞主线程。
 - 恰当的数据结构
 例1：比如存储一个user对象，我们有三个存储方式：
-![恰当的数据结构.png](src%2Fmain%2Fresources%2Fimg%2F%C7%A1%B5%B1%B5%C4%CA%FD%BE%DD%BD%E1%B9%B9.png)
+![恰当的数据结构.png](src/main/resources/img/恰当的数据结构.png)
 - 方式一：json字符串
 - 方式二：字段打散
 - 方式三：hash结构
@@ -865,7 +865,7 @@ jedis.mset(arr);
 ```
 ##### 集群下的批处理
 如MSET或pipeline这样的批处理需要在一次请求中携带多条命令，而此时如果redis是一个集群，那么批处理命令的多个key必须落在一个插槽中，否则就会执行失败。
-![集群下的批处理.png](src%2Fmain%2Fresources%2Fimg%2F%BC%AF%C8%BA%CF%C2%B5%C4%C5%FA%B4%A6%C0%ED.png)
+![集群下的批处理.png](src/main/resources/img/集群下的批处理.png)
 Spring官方实现方案,通过SlotHash工具类，将多个key映射到同一个插槽中。异步化线程去执行批处理命令，最后将结果合并返回。
 ```
 Map<Integer, List<K>> partitioned = SlotHash.partition(this.codec, map.keySet());

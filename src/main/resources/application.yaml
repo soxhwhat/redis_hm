@@ -1,8 +1,5 @@
 server:
   port: 8081
-canal:
-  destination: example
-  server: 127.0.0.1:11111 # canal server地址
 spring:
   application:
     name: hmdp
@@ -10,43 +7,19 @@ spring:
     driver-class-name: com.mysql.jdbc.Driver
     url: jdbc:mysql://127.0.0.1:3306/hmdp?useSSL=false&serverTimezone=UTC
     username: root
-    password:
-#      redis配置哨兵模式
+    password: 123
   redis:
-#    redis配置集群模式
-#    cluster:
-#      nodes:
-#        - 127.0.0.1:6379
-#        - 127.0.0.1:6380
-#        - 127.0.0.1:6381
-#        - 127.0.0.1:6382
-#        - 127.0.0.1:6383
-#        - 127.0.0.1:6384
-#    #    sentinel:
-#      master: mymaster
-#      nodes:
-#          - 127.0.0.1:26379
-#          - 127.0.0.1:26380
-#          - 127.0.0.1:26381
-    host: localhost
+    host: 192.168.150.101
     port: 6379
-    password: # Redis 服务器密码，默认为空。生产中，一定要设置 Redis 密码！
+    password: 123321
     lettuce:
       pool:
         max-active: 10
         max-idle: 10
         min-idle: 1
         time-between-eviction-runs: 10s
-  # 对应 RedisProperties 类
-#    database: 0 # Redis 数据库号，默认为 0 。
-#    timeout: 0 # Redis 连接超时时间，单位：毫秒。
-#    redisson:
-#      config: classpath:redisson.yaml # Redisson 配置文件路径
   jackson:
     default-property-inclusion: non_null # JSON处理时忽略非空字段
-    serialization:
-      write-date-keys-as-timestamps: false
-    property-naming-strategy: SNAKE_CASE # JSON字段名命名策略
 mybatis-plus:
   type-aliases-package: com.hmdp.entity # 别名扫描包
 logging:
