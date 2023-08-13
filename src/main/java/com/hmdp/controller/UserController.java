@@ -6,11 +6,16 @@ import com.hmdp.dto.Result;
 import com.hmdp.entity.UserInfo;
 import com.hmdp.service.IUserInfoService;
 import com.hmdp.service.IUserService;
+import com.hmdp.service.excel.CompanyName;
+import com.hmdp.service.excel.CompanyNameService;
+import com.hmdp.service.excel.HttpRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpSession;
+import java.util.ArrayList;
 
 /**
  * <p>
@@ -30,6 +35,24 @@ public class UserController {
 
     @Resource
     private IUserInfoService userInfoService;
+    @Autowired
+    private CompanyNameService companyNameService;
+
+    @Autowired
+    private HttpRequest httpRequest;
+
+    @GetMapping("/test")
+    public Result test() {
+        CompanyName companyName = new CompanyName().setName("test").setUrl("111");
+        CompanyName companyName1 = new CompanyName().setName("test1").setUrl("111");
+        ArrayList<CompanyName> list = new ArrayList<>();
+        list.add(companyName);
+        list.add(companyName1);
+//        companyNameService.saveBatch(list);
+        companyNameService.save(companyName);
+        return Result.ok();
+    }
+
 
     /**
      * 发送手机验证码
