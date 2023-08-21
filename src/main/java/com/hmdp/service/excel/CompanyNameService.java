@@ -9,19 +9,19 @@ import java.util.Arrays;
 
 @Service
 public class CompanyNameService extends ServiceImpl<CompanyNameMapper, CompanyName> {
-    private final EntitySaveListener<CompanyName> entitySavedEventListener;
+//    private final EntitySaveListener<CompanyName> entitySavedEventListener;
+//
+//    public CompanyNameService(EntitySaveListener<CompanyName>  entitySavedEventListener) {
+//        this.entitySavedEventListener = entitySavedEventListener;
+//    }
 
-    public CompanyNameService(EntitySaveListener<CompanyName>  entitySavedEventListener) {
-        this.entitySavedEventListener = entitySavedEventListener;
-    }
 
-
-    @Override
-    public boolean save(CompanyName entity) {
-        boolean success =  super.save(entity);
-        if (success) {
-            entitySavedEventListener.afterEntitySave(Arrays.asList(entity));
-        }
-        return success;
-    }
+//    @Override
+//    public boolean save(CompanyName entity) {
+//        boolean success =  super.save(entity);
+//        if (success) {
+//            entitySavedEventListener.afterEntitySave(Arrays.asList(entity));
+//        }
+//        return success;
+//    }
 }
